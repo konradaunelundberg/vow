@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "vow.status",
+  "name": "Vow",
+  "version": "0.1.0",
+  "author": "Vow",
+  "license": "MIT",
+  "description": "What Vow is blocking right now and how long is left, in the Omarchy bar.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Status.qml"
+  },
+  "barWidget": {
+    "displayName": "Vow",
+    "description": "The active block and its countdown; click to open Vow.",
+    "category": "Status",
+    "allowMultiple": false,
+    "defaultSection": "centerBegin",
+    "defaults": {
+      "showWhenIdle": true
+    },
+    "schema": [
+      {
+        "key": "showWhenIdle",
+        "type": "boolean",
+        "label": "Show the icon when nothing is blocked",
+        "defaultValue": true
+      }
+    ]
+  }
+}

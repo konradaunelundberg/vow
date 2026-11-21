@@ -1,0 +1,32 @@
+pkgname=vow
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Block websites and apps on precise schedules, with locks, limits, and allowances'
+arch=('x86_64' 'aarch64')
+license=('MIT')
+depends=('qt6-base' 'qt6-declarative' 'qt6-wayland' 'iw' 'libnotify')
+optdepends=('chromium: per-site tracking and blocked pages through the extension')
+makedepends=('gcc' 'make')
+install=vow.install
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir/.."
+  ./bin/build
+}
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 build/vow "$pkgdir/usr/bin/vow"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$startdir/vow.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/vow.svg"
+  install -Dm644 "$startdir/vow.desktop" "$pkgdir/usr/share/applications/vow.desktop"
+  install -Dm644 "$startdir/vow.service" "$pkgdir/usr/lib/systemd/system/vow.service"
+  for file in extension/*; do
+    install -Dm644 "$file" "$pkgdir/usr/share/vow/chromium-extension/$(basename "$file")"
+  done
+  for file in $(cd shell-plugin && find . -type f); do
+    install -Dm644 "shell-plugin/$file" "$pkgdir/usr/share/vow/shell-plugin/$file"
+  done
+}

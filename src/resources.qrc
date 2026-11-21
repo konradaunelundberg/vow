@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="Main.qml">Main.qml</file>
+        <file alias="NowPage.qml">NowPage.qml</file>
+        <file alias="BlocksPage.qml">BlocksPage.qml</file>
+        <file alias="StatsPage.qml">StatsPage.qml</file>
+        <file alias="BlockEditor.qml">BlockEditor.qml</file>
+        <file alias="RuleEditor.qml">RuleEditor.qml</file>
+        <file alias="WeekPreview.qml">WeekPreview.qml</file>
+        <file alias="ConfirmDialog.qml">ConfirmDialog.qml</file>
+        <file alias="VButton.qml">VButton.qml</file>
+        <file alias="VField.qml">VField.qml</file>
+        <file alias="VArea.qml">VArea.qml</file>
+        <file alias="Chip.qml">Chip.qml</file>
+        <file alias="Heading.qml">Heading.qml</file>
+        <file alias="Txt.qml">Txt.qml</file>
+        <file alias="i18n/en.json">i18n/en.json</file>
+    </qresource>
+</RCC>

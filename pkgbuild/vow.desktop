@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Vow
+Comment=Block websites and apps on precise schedules
+Exec=vow
+Icon=vow
+Terminal=false
+Categories=Utility;
+Keywords=block;focus;blocker;schedule;distraction;
+StartupWMClass=vow

@@ -1,0 +1,15 @@
+post_install() {
+  systemctl daemon-reload
+  echo ">> Start the blocker:  sudo systemctl enable --now vow"
+  echo ">> Then, as yourself:  vow setup   (Chromium extension and bar widget)"
+}
+
+post_upgrade() {
+  systemctl daemon-reload
+  systemctl try-restart vow.service
+}
+
+pre_remove() {
+  # Stopping lets the daemon take its hosts and Chromium entries back out.
+  systemctl disable --now vow.service 2>/dev/null || true
+}

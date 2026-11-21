@@ -1,0 +1,6 @@
+{
+  "%n sites": { "one": "%n site", "other": "%n sites" },
+  "%n apps": { "one": "%n app", "other": "%n apps" },
+  "%n rules": { "one": "%n rule", "other": "%n rules" },
+  "%n blocks": { "one": "%n block", "other": "%n blocks" }
+}
