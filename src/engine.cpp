@@ -10,6 +10,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QTcpSocket>
+#include <QUrl>
 #include <QUuid>
 
 #include "theme.h"
@@ -20,6 +21,16 @@
 
 static const char *HostsBegin = "# >>> vow: managed block list, do not edit";
 static const char *HostsEnd = "# <<< vow";
+
+// "block" lists what to block, "allow" what to keep, and "focus" keeps one
+// site in one Chromium tab and closes everything else.
+static QString modeOf(const QJsonObject &block) {
+    return block.value("mode").toString("block");
+}
+static bool keepsOnly(const QJsonObject &block) {
+    const QString mode = modeOf(block);
+    return mode == "allow" || mode == "focus";
+}
 
 static bool writeAtomically(const QString &path, const QByteArray &data, QFileDevice::Permissions permissions) {
     QDir().mkpath(QFileInfo(path).absolutePath());
@@ -207,7 +218,7 @@ QString Engine::siteBlockedBy(const QString &url) const {
             return std::any_of(patterns.begin(), patterns.end(),
                                [&](const QString &p) { return Model::urlMatches(p, url); });
         };
-        if (block.value("mode").toString() == "allow") {
+        if (keepsOnly(block)) {
             if (!any(sites) && !any(exceptions))
                 return block.value("name").toString();
         } else if (any(sites) && !any(exceptions)) {
@@ -285,7 +296,7 @@ void Engine::tick(const QDateTime &at) {
         for (const auto &value : m_blocks) {
             const QJsonObject block = value.toObject();
             if (m_evaluations.value(block.value("id").toString()).blocking &&
-                (block.value("mode").toString() == "allow" || !strings(block.value("apps")).isEmpty()))
+                (keepsOnly(block) || !strings(block.value("apps")).isEmpty()))
                 anyApps = true;
         }
         if (anyApps)
@@ -316,7 +327,7 @@ void Engine::applyHosts() {
     QSet<QString> domains;
     for (const auto &value : m_blocks) {
         const QJsonObject block = value.toObject();
-        if (!m_evaluations.value(block.value("id").toString()).blocking || block.value("mode").toString() == "allow")
+        if (!m_evaluations.value(block.value("id").toString()).blocking || keepsOnly(block))
             continue;
         // Exceptions narrow a block, and hosts cannot express "all of
         // youtube.com except /watch", so those domains are left to Chromium.
@@ -369,13 +380,15 @@ void Engine::applyHosts() {
 void Engine::applyChromiumPolicy() {
     QStringList blocklist, allowlist;
     bool allowOnly = false;
+    bool focus = false;
     QStringList allowCandidates;
     for (const auto &value : m_blocks) {
         const QJsonObject block = value.toObject();
         if (!m_evaluations.value(block.value("id").toString()).blocking)
             continue;
-        if (block.value("mode").toString() == "allow") {
+        if (keepsOnly(block)) {
             allowOnly = true;
+            focus = focus || modeOf(block) == "focus";
             allowCandidates << strings(block.value("sites")) << strings(block.value("allowSites"));
         } else {
             blocklist << strings(block.value("sites"));
@@ -395,16 +408,28 @@ void Engine::applyChromiumPolicy() {
                 allowlist << site;
         }
         blocklist = QStringList{"*"};
-        allowlist << "chrome://*" << "chrome-extension://*" << "about:blank";
+        // In a focus session even Chromium's own pages (settings,
+        // extensions, history) are off limits; only Vow's extension stays.
+        if (!focus)
+            allowlist << "chrome://*";
+        allowlist << "chrome-extension://*" << "about:blank";
     }
     blocklist.removeDuplicates();
     allowlist.removeDuplicates();
 
     QByteArray policy;
-    if (!blocklist.isEmpty())
-        policy = QJsonDocument(QJsonObject{{"URLBlocklist", QJsonArray::fromStringList(blocklist)},
-                                           {"URLAllowlist", QJsonArray::fromStringList(allowlist)}})
-                     .toJson();
+    if (!blocklist.isEmpty()) {
+        QJsonObject object{{"URLBlocklist", QJsonArray::fromStringList(blocklist)},
+                           {"URLAllowlist", QJsonArray::fromStringList(allowlist)}};
+        if (focus) {
+            // No side doors: incognito, guest windows, and developer tools
+            // all slip past the extension.
+            object.insert("IncognitoModeAvailability", 1);
+            object.insert("BrowserGuestModeEnabled", false);
+            object.insert("DeveloperToolsAvailability", 2);
+        }
+        policy = QJsonDocument(object).toJson();
+    }
     if (policy == m_lastPolicy && (policy.isEmpty() != QFile::exists(m_paths.chromiumPolicy)))
         return;
     if (policy.isEmpty())
@@ -435,7 +460,7 @@ void Engine::enforceProcesses(const QDateTime &at) {
     QList<QPair<QString, QString>> patterns;   // pattern, block name
     for (const auto &value : m_blocks) {
         const QJsonObject block = value.toObject();
-        if (!m_evaluations.value(block.value("id").toString()).blocking || block.value("mode").toString() == "allow")
+        if (!m_evaluations.value(block.value("id").toString()).blocking || keepsOnly(block))
             continue;
         for (const auto &app : strings(block.value("apps")))
             if (!app.startsWith("class:"))
@@ -486,15 +511,22 @@ void Engine::enforceProcesses(const QDateTime &at) {
 }
 
 void Engine::enforceWindows(const QJsonArray &clients) {
-    if (clients.isEmpty())
+    if (m_hyprSocket.isEmpty())
         return;
     QStringList classPatterns;
     QList<QStringList> allowLists;
+    QString focusUrl;
     for (const auto &value : m_blocks) {
         const QJsonObject block = value.toObject();
         if (!m_evaluations.value(block.value("id").toString()).blocking)
             continue;
-        if (block.value("mode").toString() == "allow")
+        if (modeOf(block) == "focus") {
+            // Only Chromium's own windows; web-app windows have classes of
+            // their own and close like anything else.
+            allowLists << QStringList{"class:chromium"};
+            if (focusUrl.isEmpty())
+                focusUrl = focusUrlOf(block);
+        } else if (modeOf(block) == "allow")
             allowLists << strings(block.value("apps"));
         else
             for (const auto &app : strings(block.value("apps")))
@@ -524,6 +556,35 @@ void Engine::enforceWindows(const QJsonArray &clients) {
                 hyprctl("dispatch closewindow address:" + address.toUtf8());
         }
     }
+
+    // A focus session keeps Chromium open on its site: if the browser is
+    // gone, it comes back.
+    if (!focusUrl.isEmpty()) {
+        const bool open = std::any_of(clients.begin(), clients.end(), [](const QJsonValue &c) {
+            return c.toObject().value("class").toString() == "chromium";
+        });
+        const QDateTime at = now();
+        if (!open && (!m_focusLaunched.isValid() || m_focusLaunched.secsTo(at) >= 8)) {
+            m_focusLaunched = at;
+            const QByteArray command = "uwsm-app -- chromium --new-window " + focusUrl.toUtf8();
+            const QByteArray answer = hyprctl("dispatch hl.dsp.exec_cmd(\"" + command + "\")");
+            if (answer.trimmed() != "ok")
+                hyprctl("dispatch exec " + command);
+        }
+    }
+}
+
+// The page a focus session opens, made safe to put on a command line.
+QString Engine::focusUrlOf(const QJsonObject &block) {
+    QString text = block.value("focus").toObject().value("url").toString().trimmed();
+    if (text.isEmpty())
+        text = strings(block.value("sites")).value(0);
+    if (!text.contains("://"))
+        text = "https://" + text;
+    const QUrl url(text, QUrl::TolerantMode);
+    if (!url.isValid() || (url.scheme() != "https" && url.scheme() != "http") || url.host().isEmpty())
+        return {};
+    return QString::fromLatin1(url.toEncoded(QUrl::FullyEncoded));
 }
 
 // ---------------------------------------------------------------- usage
@@ -1122,5 +1183,17 @@ QByteArray Engine::handleHttp(const QByteArray &method, const QByteArray &path, 
         }
         blocked.append(QJsonObject{{"id", tab.value("id")}, {"block", name}, {"until", until}});
     }
-    return respond(200, QJsonDocument(QJsonObject{{"blocked", blocked}}).toJson(QJsonDocument::Compact));
+    QJsonObject answer{{"blocked", blocked}};
+    for (const auto &blockValue : m_blocks) {
+        const QJsonObject block = blockValue.toObject();
+        if (modeOf(block) != "focus" || !m_evaluations.value(block.value("id").toString()).blocking)
+            continue;
+        QJsonArray sites = block.value("sites").toArray();
+        for (const auto &site : block.value("allowSites").toArray())
+            sites.append(site);
+        answer.insert("focus", QJsonObject{{"url", focusUrlOf(block)}, {"sites", sites},
+                                           {"block", block.value("name").toString()}});
+        break;
+    }
+    return respond(200, QJsonDocument(answer).toJson(QJsonDocument::Compact));
 }

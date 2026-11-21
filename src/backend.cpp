@@ -220,7 +220,10 @@ QString Backend::describeBlock(const QVariantMap &variant) const {
     QStringList parts;
     const int sites = block.value("sites").toArray().size();
     const int apps = block.value("apps").toArray().size();
-    if (block.value("mode").toString() == "allow")
+    if (block.value("mode").toString() == "focus")
+        parts << tr("Focus on %1").arg(Model::hostOf(block.value("focus").toObject().value("url").toString(
+                     block.value("sites").toArray().at(0).toString())));
+    else if (block.value("mode").toString() == "allow")
         parts << tr("Allow only") + " " + tr("%n sites", "", sites) + ", " + tr("%n apps", "", apps);
     else
         parts << tr("%n sites", "", sites) + ", " + tr("%n apps", "", apps);

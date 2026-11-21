@@ -301,6 +301,44 @@ private slots:
         QVERIFY(engine.siteBlockedBy("chrome://settings").isEmpty());
     }
 
+    void focusSessionKeepsOneSite() {
+        QTemporaryDir dir;
+        EnginePaths paths;
+        paths.stateDir = dir.filePath("state");
+        paths.runDir = dir.filePath("run");
+        paths.hosts = dir.filePath("hosts");
+        paths.chromiumPolicy = dir.filePath("policy.json");
+        paths.proc = dir.filePath("proc");
+        paths.runUser = dir.filePath("user");
+        Engine engine(paths);
+        engine.setNow(at("2026-11-23T10:00"));
+        const auto saved = engine.handle({{"cmd", "save"}, {"block", QJsonObject{
+            {"name", "Math Academy session"}, {"mode", "focus"},
+            {"focus", QJsonObject{{"url", "https://mathacademy.com"}}},
+            {"sites", QJsonArray{"mathacademy.com"}}}}});
+        const QString id = saved.value("id").toString();
+        QVERIFY(engine.siteBlockedBy("https://youtube.com/").isEmpty());   // not started yet
+        QVERIFY(engine.handle({{"cmd", "session"}, {"id", id}, {"minutes", 60}}).value("ok").toBool());
+        QVERIFY(engine.siteBlockedBy("https://www.mathacademy.com/learn").isEmpty());
+        QCOMPARE(engine.siteBlockedBy("https://youtube.com/"), QString("Math Academy session"));
+
+        QFile policy(paths.chromiumPolicy);
+        QVERIFY(policy.open(QIODevice::ReadOnly));
+        const QJsonObject object = QJsonDocument::fromJson(policy.readAll()).object();
+        QCOMPARE(object.value("URLBlocklist").toArray(), QJsonArray{"*"});
+        QVERIFY(object.value("URLAllowlist").toArray().contains("mathacademy.com"));
+        QVERIFY(!object.value("URLAllowlist").toArray().contains("chrome://*"));
+        QCOMPARE(object.value("IncognitoModeAvailability").toInt(), 1);
+
+        QFile hosts(paths.hosts);
+        QVERIFY(!hosts.exists() || (hosts.open(QIODevice::ReadOnly) && !hosts.readAll().contains("mathacademy")));
+
+        // The URL goes onto a command line, so anything odd in it is encoded.
+        QCOMPARE(Engine::focusUrlOf(QJsonObject{{"focus", QJsonObject{{"url", "mathacademy.com/a\"b c"}}}}),
+                 QString("https://mathacademy.com/a%22b%20c"));
+        QVERIFY(Engine::focusUrlOf(QJsonObject{{"focus", QJsonObject{{"url", "javascript:alert(1)"}}}}).isEmpty());
+    }
+
     void previewSplitsAtMidnight() {
         Backend backend(false);
         QVariantMap b = block({QJsonObject{{"kind", "daily"}, {"start", "22:00"}, {"end", "02:00"}}}).toVariantMap();

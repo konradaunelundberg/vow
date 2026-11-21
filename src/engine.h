@@ -49,6 +49,7 @@ public:
     QJsonObject status() const { return m_status; }
 
     void setNow(const QDateTime &now) { m_fixedNow = now; }
+    static QString focusUrlOf(const QJsonObject &block);
 
 private:
     QDateTime now() const;
@@ -115,6 +116,7 @@ private:
     bool m_dirty = false;
     bool m_usageDirty = false;
     QDateTime m_fixedNow;
+    QDateTime m_focusLaunched;
 
     QLocalServer m_local;
     QTcpServer m_http;

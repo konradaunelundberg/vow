@@ -441,7 +441,7 @@ QString checkLockedEdit(const QJsonObject &before, const QJsonObject &after, con
     // Adding things to block makes a block stricter; removing them does not.
     // In allow-only mode the lists are what stays reachable, so there the
     // reverse holds.
-    const bool allowMode = before.value("mode").toString() == "allow";
+    const bool allowMode = before.value("mode").toString() == "allow" || before.value("mode").toString() == "focus";
     for (const QString key : {"sites", "apps"}) {
         const auto was = stringSet(before.value(key));
         const auto now = stringSet(after.value(key));

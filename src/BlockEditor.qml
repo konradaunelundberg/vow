@@ -17,6 +17,7 @@ Item {
     readonly property var evaluation: draft && draft.id ? (backend.evaluations[draft.id] || {}) : ({})
     readonly property bool locked: evaluation.locked === true
     property int lockedRules: 0
+    readonly property bool focusMode: { revision; return draft !== null && draft.mode === "focus" }
 
     signal saved(string id)
     signal deleted()
@@ -144,24 +145,70 @@ Item {
             }
 
             // ---------------------------------------------- what
-            Heading { text: qsTr("What"); hint: qsTr("Block a list, or allow only a list and block everything else.") }
+            Heading {
+                text: qsTr("What")
+                hint: root.focusMode ? qsTr("While on, only Chromium stays open, with one tab on the site below. Other windows and tabs close, and the tab comes back if you close it.")
+                                     : qsTr("Block a list, or allow only a list and block everything else.")
+            }
             RowLayout {
                 spacing: 4
-                Chip {
-                    text: qsTr("Block these")
-                    locked: root.locked
-                    checked: { root.revision; return root.draft && root.draft.mode !== "allow" }
-                    onToggled: { root.draft.mode = "block"; root.touch() }
+                Repeater {
+                    model: [["block", qsTr("Block these")], ["allow", qsTr("Allow only these")], ["focus", qsTr("Focus session")]]
+                    Chip {
+                        text: modelData[1]
+                        locked: root.locked
+                        checked: { root.revision; return root.draft && (root.draft.mode || "block") === modelData[0] }
+                        onToggled: {
+                            root.draft.mode = modelData[0]
+                            if (modelData[0] === "focus" && !root.draft.focus) root.draft.focus = { url: "" }
+                            root.rebuild()
+                        }
+                    }
                 }
-                Chip {
-                    text: qsTr("Allow only these")
-                    locked: root.locked
-                    checked: { root.revision; return root.draft && root.draft.mode === "allow" }
-                    onToggled: { root.draft.mode = "allow"; root.touch() }
+            }
+
+            // A focus session: one site, one tab, nothing else.
+            ColumnLayout {
+                visible: root.focusMode
+                Layout.fillWidth: true
+                spacing: 6
+                RowLayout {
+                    spacing: 8
+                    Txt { text: "󰖟  " + qsTr("Opens"); font.bold: true; Layout.preferredWidth: 110 }
+                    VField {
+                        Layout.fillWidth: true
+                        readOnly: root.locked
+                        placeholder: "https://mathacademy.com"
+                        text: { root.structure; return root.draft && root.draft.focus ? root.draft.focus.url || "" : "" }
+                        onEdited: {
+                            root.draft.focus.url = text.trim()
+                            // The site it opens is always allowed.
+                            var host = text.trim().replace(/^[a-z]+:\/\//i, "").split("/")[0].replace(/^www\./, "")
+                            if (host !== "" && root.draft.sites.length <= 1) root.draft.sites = [host]
+                            root.touch()
+                        }
+                    }
+                }
+                RowLayout {
+                    spacing: 8
+                    Txt { text: qsTr("Allowed sites"); font.bold: true; Layout.preferredWidth: 110; Layout.alignment: Qt.AlignTop }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        VArea {
+                            Layout.fillWidth: true
+                            lines: 2
+                            readOnly: root.locked
+                            text: { root.structure; return root.draft ? backend.listToText(root.draft.sites) : "" }
+                            onEdited: { root.draft.sites = backend.textToList(text); root.touch() }
+                        }
+                        Txt { text: qsTr("where the tab may go; anything else sends it back to the page above"); dimmed: true; font.pixelSize: 11 }
+                    }
                 }
             }
 
             GridLayout {
+                visible: !root.focusMode
                 Layout.fillWidth: true
                 columns: width > 640 ? 2 : 1
                 columnSpacing: 14
@@ -197,6 +244,7 @@ Item {
                 }
             }
             ColumnLayout {
+                visible: !root.focusMode
                 Layout.fillWidth: true
                 spacing: 4
                 Txt { text: root.draft && root.draft.mode === "allow" ? qsTr("Also allowed") : qsTr("Always allowed (exceptions)"); font.bold: true }
