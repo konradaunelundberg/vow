@@ -5,6 +5,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QProcess>
+#include <QThread>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
@@ -192,9 +193,20 @@ static int runSetup(const QStringList &args) {
     if (QFileInfo::exists(QDir::homePath() + "/.config/omarchy")) {
         if (copyTree(share + "/shell-plugin", plugins + "/vow")) {
             out << "Bar: installed the Vow widget in " << plugins << "/vow.\n";
-            const int code = QProcess::execute("omarchy", {"plugin", "enable", "vow.status", "--section", "centerBegin"});
+            // The shell has to notice the new folder before it can enable it.
+            QProcess::execute("omarchy-shell", {"shell", "rescanPlugins"});
+            int code = 1;
+            for (int attempt = 0; attempt < 6 && code != 0; ++attempt) {
+                if (attempt > 0)
+                    QThread::msleep(500);
+                code = QProcess::execute("omarchy", {"plugin", "enable", "vow.status", "--section", "centerBegin"});
+            }
             if (code != 0)
                 err << "Bar: add it with: omarchy plugin enable vow.status\n";
+            // A plugin folder the shell has not seen before only gets its
+            // widget built when the shell starts.
+            else
+                QProcess::execute("omarchy", {"restart", "shell"});
         } else {
             err << "Bar: could not copy the widget into " << plugins << "\n";
             ok = false;
