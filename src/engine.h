@@ -74,6 +74,7 @@ private:
     int blockIndex(const QString &id) const;
     QJsonObject reply(bool ok, const QString &error = {}) const;
     QJsonObject snapshot() const;
+    bool chromiumRunning() const;
 
     void acceptLocal();
     void acceptHttp();

@@ -100,11 +100,11 @@ ApplicationWindow {
                         model: [
                             [backend.online, qsTr("Service"), backend.online ? qsTr("running") : qsTr("stopped")],
                             [backend.hyprland, qsTr("Hyprland"), backend.hyprland ? qsTr("connected") : qsTr("not found")],
-                            [backend.extension, qsTr("Chromium"), backend.extension ? qsTr("extension on") : qsTr("no extension")]
+                            [backend.extension, qsTr("Chromium"), backend.extension ? qsTr("extension on") : backend.chromium ? qsTr("no extension") : qsTr("not running"), !backend.extension && !backend.chromium]
                         ]
                         RowLayout {
                             spacing: 8
-                            Rectangle { width: 7; height: 7; radius: 3.5; color: modelData[0] ? theme.success : theme.danger }
+                            Rectangle { width: 7; height: 7; radius: 3.5; color: modelData[0] ? theme.success : modelData[3] ? theme.dim : theme.danger }
                             Txt { text: modelData[1]; font.pixelSize: 11 }
                             Txt { text: modelData[2]; font.pixelSize: 11; dimmed: true }
                         }

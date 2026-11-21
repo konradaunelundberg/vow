@@ -757,6 +757,20 @@ QJsonObject Engine::reply(bool ok, const QString &error) const {
     return object;
 }
 
+// Whether Chromium runs at all, so a silent extension can be told apart
+// from a closed browser.
+bool Engine::chromiumRunning() const {
+    QDirIterator it(m_paths.proc, QDir::Dirs | QDir::NoDotAndDotDot);
+    while (it.hasNext()) {
+        const QString dir = it.next();
+        bool numeric = false;
+        QFileInfo(dir).fileName().toInt(&numeric);
+        if (numeric && readFirstLine(dir + "/comm") == "chromium")
+            return true;
+    }
+    return false;
+}
+
 QJsonObject Engine::snapshot() const {
     const QDateTime at = now();
     QJsonObject evaluations;
@@ -818,6 +832,7 @@ QJsonObject Engine::snapshot() const {
         {"ssid", m_ssid},
         {"hyprland", !m_hyprSocket.isEmpty()},
         {"extension", m_extensionSeen.isValid() && m_extensionSeen.secsTo(at) < 30},
+        {"chromium", chromiumRunning()},
     };
 }
 

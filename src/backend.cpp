@@ -44,13 +44,14 @@ void Backend::applySnapshot(const QJsonObject &snapshot) {
     const QVariantMap settings = snapshot.value("settings").toObject().toVariantMap();
     const bool hyprland = snapshot.value("hyprland").toBool();
     const bool extension = snapshot.value("extension").toBool();
+    const bool chromium = snapshot.value("chromium").toBool();
     const QString ssid = snapshot.value("ssid").toString();
     QVariantMap statusCompare = status;
     statusCompare.remove("updated");
     QVariantMap previousStatus = m_status;
     previousStatus.remove("updated");
     if (m_online && blocks == m_blocks && evaluations == m_evaluations && statusCompare == previousStatus &&
-        settings == m_settings && hyprland == m_hyprland && extension == m_extension && ssid == m_ssid &&
+        settings == m_settings && hyprland == m_hyprland && extension == m_extension && chromium == m_chromium && ssid == m_ssid &&
         stats.keys() == m_stats.keys()) {
         m_stats = stats;   // Seconds tick up constantly; the stats page reads them on its own timer.
         return;
@@ -64,6 +65,7 @@ void Backend::applySnapshot(const QJsonObject &snapshot) {
     m_settings = settings;
     m_hyprland = hyprland;
     m_extension = extension;
+    m_chromium = chromium;
     m_ssid = ssid;
     emit changed();
 }

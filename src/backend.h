@@ -19,6 +19,7 @@ class Backend : public QObject {
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY changed)
     Q_PROPERTY(bool hyprland READ hyprland NOTIFY changed)
     Q_PROPERTY(bool extension READ extension NOTIFY changed)
+    Q_PROPERTY(bool chromium READ chromium NOTIFY changed)
     Q_PROPERTY(QString ssid READ ssid NOTIFY changed)
     Q_PROPERTY(QDateTime now READ now NOTIFY tickChanged)
 
@@ -34,6 +35,7 @@ public:
     QVariantMap settings() const { return m_settings; }
     bool hyprland() const { return m_hyprland; }
     bool extension() const { return m_extension; }
+    bool chromium() const { return m_chromium; }
     QString ssid() const { return m_ssid; }
     QDateTime now() const { return QDateTime::currentDateTime(); }
 
@@ -87,6 +89,7 @@ private:
     QVariantMap m_settings;
     bool m_hyprland = false;
     bool m_extension = false;
+    bool m_chromium = false;
     QString m_ssid;
     QTimer m_timer;
 };
