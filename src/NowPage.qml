@@ -27,6 +27,12 @@ Item {
         return list.slice(0, 6)
     }
 
+    readonly property string quickName: {
+        var id = quickBlock !== "" ? quickBlock : (backend.blocks.length ? backend.blocks[0].id : "")
+        var match = backend.blocks.filter(function(b) { return b.id === id })
+        return match.length ? match[0].name : ""
+    }
+
     function startQuick() {
         var id = quickBlock !== "" ? quickBlock : (backend.blocks.length ? backend.blocks[0].id : "")
         if (id === "") { toast(qsTr("Make a block first (press 2, then N).")); return }
@@ -148,7 +154,7 @@ Item {
             }
 
             // ---------------------------------------------- quick start
-            Heading { text: qsTr("Block now"); hint: qsTr("Start one of your blocks for a while, on top of its schedule. Space starts it.") }
+            Heading { text: qsTr("Block now"); hint: qsTr("Pick a block and a length, then press Start (or Space). Picking a block on its own starts nothing.") }
             Flow {
                 Layout.fillWidth: true
                 spacing: 4
@@ -187,8 +193,19 @@ Item {
                     checked: root.quickLock
                     onToggled: root.quickLock = !root.quickLock
                 }
-                Item { width: 6; height: 1 }
-                VButton { text: qsTr("Start"); glyph: "󰐊"; primary: true; enabledState: backend.online && backend.blocks.length > 0; onClicked: root.startQuick() }
+            }
+
+            // Says exactly what it will do, since picking a block above only
+            // selects it.
+            VButton {
+                Layout.topMargin: 4
+                glyph: "󰐊"
+                primary: true
+                enabledState: backend.online && backend.blocks.length > 0
+                text: root.quickName === "" ? qsTr("Start")
+                    : (root.quickLock ? qsTr("Start %1 for %2, locked") : qsTr("Start %1 for %2"))
+                        .arg(root.quickName).arg(backend.inMinutes(root.quickMinutes))
+                onClicked: root.startQuick()
             }
 
             // ---------------------------------------------- limits
