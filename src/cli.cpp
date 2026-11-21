@@ -56,7 +56,7 @@ static void usage() {
            "  vow lock <block> <time>     lock a block for a while, or until YYYY-MM-DDTHH:MM\n"
            "  vow break <block>           take break time the block allows\n"
            "  vow pass <block>            use one of the block's passes\n"
-           "  vow setup                   turn on the Chromium extension and the bar widget\n"
+           "  vow setup [--chromium]      turn on the Chromium extension (and the bar widget)\n"
            "  vow daemon                  run the enforcing service (as root, from systemd)\n";
     out.flush();
 }
@@ -150,26 +150,41 @@ static int runSetup(const QStringList &args) {
         return 1;
     }
     const QString share = args.contains("--from") ? args.value(args.indexOf("--from") + 1) : "/usr/share/vow";
-    const QString extension = share + "/chromium-extension";
+    const QString extension = args.contains("--extension") ? args.value(args.indexOf("--extension") + 1)
+                                                           : share + "/chromium-extension";
+    const bool chromiumOnly = args.contains("--chromium");
     bool ok = true;
 
-    // Chromium: add the extension to the --load-extension line, or add one.
+    // Chromium: add the extension to the --load-extension line, or add one,
+    // replacing any other copy of Vow's extension so it never loads twice.
     const QString flagsPath = QDir::homePath() + "/.config/chromium-flags.conf";
     QFile flags(flagsPath);
     QString contents;
     if (flags.open(QIODevice::ReadOnly))
         contents = QString::fromUtf8(flags.readAll());
     flags.close();
-    if (contents.contains(extension)) {
+    QStringList lines = contents.split('\n');
+    bool present = false;
+    for (auto &line : lines) {
+        if (!line.trimmed().startsWith("--load-extension="))
+            continue;
+        const QStringList paths = line.trimmed().mid(QString("--load-extension=").size()).split(',', Qt::SkipEmptyParts);
+        present = paths.contains(extension);
+        QStringList kept;
+        for (const auto &path : paths)
+            if (path == extension || !(path.endsWith("/vow/chromium-extension") || path.endsWith("/vow/extension")))
+                kept << path;
+        line = "--load-extension=" + kept.join(',');
+    }
+    if (present && lines.join('\n') == contents) {
         out << "Chromium: the Vow extension is already loaded.\n";
     } else {
         if (QFile::exists(flagsPath))
             QFile::copy(flagsPath, flagsPath + ".bak-vow");
-        QStringList lines = contents.split('\n');
-        bool added = false;
+        bool added = present;
         for (auto &line : lines) {
-            if (line.trimmed().startsWith("--load-extension=")) {
-                line = line.trimmed() + "," + extension;
+            if (!added && line.trimmed().startsWith("--load-extension=")) {
+                line = line.trimmed() + (line.trimmed().endsWith('=') ? "" : ",") + extension;
                 added = true;
                 break;
             }
@@ -190,7 +205,9 @@ static int runSetup(const QStringList &args) {
 
     // Omarchy bar: install the widget as a user plugin and put it on the bar.
     const QString plugins = QDir::homePath() + "/.config/omarchy/plugins";
-    if (QFileInfo::exists(QDir::homePath() + "/.config/omarchy")) {
+    if (chromiumOnly) {
+        // Only the extension was asked for.
+    } else if (QFileInfo::exists(QDir::homePath() + "/.config/omarchy")) {
         if (copyTree(share + "/shell-plugin", plugins + "/vow")) {
             out << "Bar: installed the Vow widget in " << plugins << "/vow.\n";
             // The shell has to notice the new folder before it can enable it.
