@@ -2,9 +2,12 @@
   "manifest_version": 3,
   "name": "Vow",
   "version": "0.1.0",
-  "description": "Lets the Vow service see which site is open, close tabs it blocks, and count time on sites. Installed by Vow.",
-  "permissions": ["tabs", "alarms"],
+  "description": "Lets the Vow service see which site is open, close tabs it blocks, count time on sites, and hide YouTube Shorts it blocks. Installed by Vow.",
+  "permissions": ["tabs", "alarms", "storage"],
   "host_permissions": ["http://127.0.0.1:47321/*"],
   "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["*://*.youtube.com/*"], "js": ["youtube.js"], "css": ["youtube.css"], "run_at": "document_start" }
+  ],
   "icons": { "128": "icon.png" }
 }

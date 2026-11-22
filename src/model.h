@@ -31,7 +31,7 @@ struct Evaluation {
     bool blocking = false;
     bool inWindow = false;                // Inside a schedule, trigger, or manual session.
     bool suspended = false;               // On a break or pass.
-    QString reason;                       // schedule, trigger, limit, session
+    QString reason;                       // permanent, schedule, trigger, limit, session
     QDateTime endsAt;                     // When the current blocking stretch ends, if known.
     QDateTime suspendedUntil;
     qint64 limitUsed = 0;                 // Seconds, when the block has a limit.

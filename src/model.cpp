@@ -292,21 +292,26 @@ Evaluation evaluate(const QJsonObject &block, const Context &context) {
 
     QDateTime windowEnd;
     bool inWindow = false;
-    if (hasRules && !excepted(block, context.now))
+    // A permanent block is on, with no end, until it is turned off by hand.
+    // Rules, triggers, days off, conditions, and limits do not apply.
+    const bool permanent = block.value("permanent").toBool(false);
+    if (permanent) {
+        inWindow = true;
+    } else if (hasRules && !excepted(block, context.now))
         inWindow = scheduleActive(block, context.now, &windowEnd);
     if (hasTriggers && !excepted(block, context.now) && triggerActive(block, context, &windowEnd))
         inWindow = true;
     // A limit with nothing else to scope it applies all the time.
-    if (!hasRules && !hasTriggers && hasLimit && !excepted(block, context.now))
+    if (!permanent && !hasRules && !hasTriggers && hasLimit && !excepted(block, context.now))
         inWindow = true;
-    if (inWindow && !conditionsHold(block, context))
+    if (!permanent && inWindow && !conditionsHold(block, context))
         inWindow = false;
 
     bool blocking = false;
     if (inWindow) {
         blocking = true;
-        result.reason = hasRules ? "schedule" : "trigger";
-        if (hasLimit) {
+        result.reason = permanent ? "permanent" : hasRules ? "schedule" : "trigger";
+        if (hasLimit && !permanent) {
             const QString period = limit.value("period").toString("day");
             result.limitTotal = 60LL * limit.value("minutes").toInt();
             result.limitUsed = context.usage.value(id + "|" + periodKey(period, context.now));
@@ -317,7 +322,7 @@ Evaluation evaluate(const QJsonObject &block, const Context &context) {
                 windowEnd = end;
         }
     }
-    if (inSession) {
+    if (inSession && !permanent) {
         result.reason = "session";
         if (!blocking || !windowEnd.isValid() || sessionEnd > windowEnd)
             windowEnd = sessionEnd;
@@ -458,6 +463,12 @@ QString checkLockedEdit(const QJsonObject &before, const QJsonObject &after, con
         return "A locked block cannot gain exception sites.";
     candidate.remove("allowSites");
     original.remove("allowSites");
+
+    // Making a block permanent only adds blocked time; undoing it does not.
+    if (before.value("permanent").toBool(false) && !after.value("permanent").toBool(false))
+        return "A locked permanent block stays permanent.";
+    candidate.remove("permanent");
+    original.remove("permanent");
 
     if (lockUntil(after) < lockUntil(before))
         return "A lock can be extended but never shortened.";

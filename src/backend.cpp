@@ -231,7 +231,9 @@ QString Backend::describeBlock(const QVariantMap &variant) const {
     if (minutes > 0)
         parts << tr("%1 per %2").arg(inMinutes(minutes), block.value("limit").toObject().value("period").toString("day"));
     const int rules = block.value("rules").toArray().size();
-    if (rules > 0)
+    if (block.value("permanent").toBool(false))
+        parts << tr("permanent");
+    else if (rules > 0)
         parts << tr("%n rules", "", rules);
     return parts.join(" · ");
 }

@@ -9,6 +9,15 @@ const BLOCKED_PAGE = chrome.runtime.getURL("blocked.html");
 let reporting = false;
 let again = false;
 let focus = null;
+let hideShorts = null;
+
+// youtube.js reads this to hide Shorts from feeds. Written only on change,
+// since reports come every two seconds.
+function setHideShorts(value) {
+  if (value === hideShorts) return;
+  hideShorts = value;
+  chrome.storage.local.set({ hideShorts: value }).catch(() => {});
+}
 
 // The same rule the service uses: "reddit.com" covers the host and its
 // subdomains, "youtube.com/shorts" also needs the path.
@@ -65,6 +74,7 @@ async function report() {
     });
     const answer = await response.json();
     focus = answer.focus && answer.focus.url ? answer.focus : null;
+    setHideShorts(Boolean(answer.hideShorts));
 
     if (focus) {
       await enforceFocus(tabs);
@@ -78,6 +88,7 @@ async function report() {
     }
   } catch (error) {
     // The service is not running; nothing to enforce from here.
+    if (error instanceof TypeError) setHideShorts(false);
   } finally {
     reporting = false;
     if (again) { again = false; report(); }

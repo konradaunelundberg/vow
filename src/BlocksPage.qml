@@ -90,7 +90,7 @@ Item {
                                 elide: Text.ElideRight
                                 font.pixelSize: 11
                                 dimmed: true
-                                text: row.evaluation.blocking ? qsTr("blocking · until %1").arg(backend.clock(row.evaluation.endsAt) || "—")
+                                text: row.evaluation.blocking ? (row.evaluation.reason === "permanent" ? qsTr("blocking · until turned off") : qsTr("blocking · until %1").arg(backend.clock(row.evaluation.endsAt) || "—"))
                                     : row.modelData.enabled === false ? qsTr("disabled")
                                     : backend.describeBlock(row.modelData)
                             }

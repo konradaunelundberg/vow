@@ -240,6 +240,8 @@ private slots:
 
         QCOMPARE(engine.siteBlockedBy("https://www.reddit.com/"), QString("Work"));
         QVERIFY(engine.siteBlockedBy("https://youtube.com/watch").isEmpty());
+        QCOMPARE(engine.siteBlockedBy("https://m.youtube.com/shorts/abc123"), QString("Work"));
+        QVERIFY(engine.hidesShorts());
 
         QVERIFY(hosts.open(QIODevice::ReadOnly));
         const QString contents = QString::fromUtf8(hosts.readAll());
@@ -260,6 +262,7 @@ private slots:
         engine.setNow(at("2026-11-23T17:00"));
         engine.tick(at("2026-11-23T17:00"));
         QVERIFY(engine.siteBlockedBy("https://reddit.com/").isEmpty());
+        QVERIFY(!engine.hidesShorts());
         QVERIFY(!QFile::exists(paths.chromiumPolicy));
         QVERIFY(hosts.open(QIODevice::ReadOnly));
         QCOMPARE(QString::fromUtf8(hosts.readAll()), QString("127.0.0.1 localhost\n"));
@@ -337,6 +340,39 @@ private slots:
         QCOMPARE(Engine::focusUrlOf(QJsonObject{{"focus", QJsonObject{{"url", "mathacademy.com/a\"b c"}}}}),
                  QString("https://mathacademy.com/a%22b%20c"));
         QVERIFY(Engine::focusUrlOf(QJsonObject{{"focus", QJsonObject{{"url", "javascript:alert(1)"}}}}).isEmpty());
+    }
+
+    void permanentStaysOnUntilTurnedOff() {
+        // Rules, days off, conditions, and limits are kept but ignored.
+        QJsonObject extra{{"permanent", true},
+                          {"exceptions", QJsonArray{QJsonObject{{"from", "2026-11-23"}}}},
+                          {"conditions", QJsonArray{QJsonObject{{"type", "wifi"}, {"match", "on"}, {"networks", QJsonArray{"Office"}}}}},
+                          {"limit", QJsonObject{{"minutes", 30}, {"period", "day"}}}};
+        auto b = block({QJsonObject{{"kind", "daily"}, {"start", "09:00"}, {"end", "10:00"}}}, extra);
+        Context context;
+        context.ssid = "Home";
+        for (const QString when : {"2026-11-23T03:00", "2026-11-23T09:30", "2027-06-01T12:00"}) {
+            context.now = at(when);
+            const auto evaluation = evaluate(b, context);
+            QVERIFY(evaluation.blocking);
+            QCOMPARE(evaluation.reason, QString("permanent"));
+            QVERIFY(!evaluation.endsAt.isValid());
+        }
+
+        // Breaks still work, and turning it off is the way out.
+        context.runtime = QJsonObject{{"b1", QJsonObject{{"suspendedUntil", "2027-06-01T12:05:00"}}}};
+        QVERIFY(!evaluate(b, context).blocking);
+        context.runtime = {};
+        b.insert("enabled", false);
+        QVERIFY(!evaluate(b, context).blocking);
+
+        // A lock can make a block permanent but not undo it.
+        const QJsonObject lock{{"conditions", QJsonArray{QJsonObject{{"type", "timer"}, {"until", "2027-07-01T00:00:00"}}}}};
+        QJsonObject scheduled = block({}, QJsonObject{{"lock", lock}});
+        QJsonObject permanent = scheduled;
+        permanent.insert("permanent", true);
+        QVERIFY(checkLockedEdit(scheduled, permanent, context.now).isEmpty());
+        QVERIFY(!checkLockedEdit(permanent, scheduled, context.now).isEmpty());
     }
 
     void previewSplitsAtMidnight() {

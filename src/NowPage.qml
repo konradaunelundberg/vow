@@ -115,8 +115,9 @@ Item {
                         Txt {
                             dimmed: true
                             text: card.onBreak ? qsTr("on a %1 until %2").arg(card.evaluation.suspendKind === "pass" ? qsTr("pass") : qsTr("break")).arg(backend.clock(card.modelData.suspendedUntil))
-                                : (card.modelData.endsAt ? qsTr("until %1").arg(backend.clock(card.modelData.endsAt)) : qsTr("until you stop it"))
-                                  + " · " + ({ schedule: qsTr("scheduled"), session: qsTr("session"), limit: qsTr("limit reached"), trigger: qsTr("triggered") })[card.modelData.reason]
+                                : (card.modelData.endsAt ? qsTr("until %1").arg(backend.clock(card.modelData.endsAt))
+                                   : card.modelData.reason === "permanent" ? qsTr("until you turn it off") : qsTr("until you stop it"))
+                                  + " · " + ({ permanent: qsTr("permanent"), schedule: qsTr("scheduled"), session: qsTr("session"), limit: qsTr("limit reached"), trigger: qsTr("triggered") })[card.modelData.reason]
                         }
                         Flow {
                             Layout.fillWidth: true

@@ -277,7 +277,8 @@ int run(const QStringList &arguments) {
             const QDateTime end = Model::parseDateTime(block.value("endsAt").toString());
             out << block.value("name").toString()
                 << (block.value("suspended").toBool() ? "  on a break" : "  blocking")
-                << (end.isValid() ? "  until " + end.toString("ddd HH:mm") : QString())
+                << (end.isValid() ? "  until " + end.toString("ddd HH:mm")
+                    : block.value("reason").toString() == "permanent" ? QString("  until turned off") : QString())
                 << (block.value("locked").toBool() ? "  locked" : "") << "\n";
         }
         const QJsonObject next = status.value("next").toObject();

@@ -228,6 +228,10 @@ QString Engine::siteBlockedBy(const QString &url) const {
     return {};
 }
 
+bool Engine::hidesShorts() const {
+    return !siteBlockedBy("https://www.youtube.com/shorts/vow").isEmpty();
+}
+
 void Engine::tick(const QDateTime &at) {
     // Desktop session and Wi-Fi, both of which triggers and conditions read.
     const QString socket = findHyprlandSocket();
@@ -680,7 +684,8 @@ void Engine::notifyUpcoming(const QDateTime &at) {
         m_nextStart.clear();
         for (const auto &value : m_blocks) {
             const QJsonObject block = value.toObject();
-            if (!block.value("enabled").toBool(true))
+            // A permanent block is already on, so its rules never start it.
+            if (!block.value("enabled").toBool(true) || block.value("permanent").toBool(false))
                 continue;
             const QDateTime next = Model::nextScheduleStart(block, at, 14);
             if (next.isValid())
@@ -1183,7 +1188,7 @@ QByteArray Engine::handleHttp(const QByteArray &method, const QByteArray &path, 
         }
         blocked.append(QJsonObject{{"id", tab.value("id")}, {"block", name}, {"until", until}});
     }
-    QJsonObject answer{{"blocked", blocked}};
+    QJsonObject answer{{"blocked", blocked}, {"hideShorts", hidesShorts()}};
     for (const auto &blockValue : m_blocks) {
         const QJsonObject block = blockValue.toObject();
         if (modeOf(block) != "focus" || !m_evaluations.value(block.value("id").toString()).blocking)

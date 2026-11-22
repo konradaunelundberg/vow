@@ -46,6 +46,9 @@ public:
     void tick(const QDateTime &now);
 
     QString siteBlockedBy(const QString &url) const;
+    // True while opening a Short would be blocked; the extension then hides
+    // Shorts from YouTube's feeds too, not just the player.
+    bool hidesShorts() const;
     QJsonObject status() const { return m_status; }
 
     void setNow(const QDateTime &now) { m_fixedNow = now; }

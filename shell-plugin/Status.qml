@@ -59,6 +59,7 @@ BarWidget {
     for (var i = 0; i < active.length; i++) {
       var a = active[i]
       var line = a.suspended ? strings.t("tooltip.break").arg(a.name).arg(clock(a.suspendedUntil))
+                             : a.reason === "permanent" ? strings.t("tooltip.permanent").arg(a.name)
                              : strings.t("tooltip.blocking").arg(a.name).arg(a.endsAt ? clock(a.endsAt) : "—")
       if (a.locked) line += " · " + strings.t("tooltip.locked")
       lines.push(line)

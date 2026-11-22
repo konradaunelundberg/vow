@@ -2,6 +2,7 @@
   "tooltip.idle": "Vow: nothing is blocked",
   "tooltip.next": "Next: %1 at %2",
   "tooltip.blocking": "%1 until %2",
+  "tooltip.permanent": "%1 until turned off",
   "tooltip.break": "%1: on a break until %2",
   "tooltip.locked": "locked",
   "tooltip.offline": "Vow: the service is not running"

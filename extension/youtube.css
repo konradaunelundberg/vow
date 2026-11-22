@@ -1,0 +1,39 @@
+/* Hides Shorts on YouTube while <html> has vow-hide-shorts; youtube.js sets it. */
+
+/* Shelves of Shorts on home, search, subscriptions, and watch pages */
+html.vow-hide-shorts ytd-reel-shelf-renderer,
+html.vow-hide-shorts ytd-rich-shelf-renderer[is-shorts],
+html.vow-hide-shorts ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+html.vow-hide-shorts ytd-rich-section-renderer:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2),
+html.vow-hide-shorts grid-shelf-view-model:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2),
+html.vow-hide-shorts ytd-item-section-renderer:has(> #contents > ytd-reel-shelf-renderer),
+html.vow-hide-shorts ytm-reel-shelf-renderer,
+html.vow-hide-shorts ytm-rich-section-renderer:has(ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2),
+
+/* Single Shorts among ordinary videos */
+html.vow-hide-shorts ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+html.vow-hide-shorts ytd-video-renderer:has(a[href^="/shorts/"]),
+html.vow-hide-shorts ytd-grid-video-renderer:has(a[href^="/shorts/"]),
+html.vow-hide-shorts ytd-compact-video-renderer:has(a[href^="/shorts/"]),
+html.vow-hide-shorts ytd-playlist-video-renderer:has(a[href^="/shorts/"]),
+html.vow-hide-shorts yt-lockup-view-model:has(a[href^="/shorts/"]),
+html.vow-hide-shorts ytm-shorts-lockup-view-model,
+html.vow-hide-shorts ytm-shorts-lockup-view-model-v2,
+html.vow-hide-shorts ytm-video-with-context-renderer:has(a[href^="/shorts/"]),
+
+/* The Shorts entry in the sidebar and mini sidebar, and on mobile */
+html.vow-hide-shorts ytd-guide-entry-renderer:has(a[title="Shorts"]),
+html.vow-hide-shorts ytd-guide-entry-renderer:has(a[href^="/shorts"]),
+html.vow-hide-shorts ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+html.vow-hide-shorts ytd-mini-guide-entry-renderer:has(a[title="Shorts"]),
+html.vow-hide-shorts ytd-mini-guide-entry-renderer:has(a[href^="/shorts"]),
+html.vow-hide-shorts ytm-pivot-bar-item-renderer:has(.pivot-shorts),
+
+/* The Shorts tab on channel pages */
+html.vow-hide-shorts yt-tab-shape[tab-title="Shorts"],
+html.vow-hide-shorts tp-yt-paper-tab:has(a[href$="/shorts"]),
+
+/* "Shorts" filter chips, which youtube.js tags by their text */
+html.vow-hide-shorts [data-vow-shorts] {
+  display: none !important;
+}

@@ -18,6 +18,7 @@ Item {
     readonly property bool locked: evaluation.locked === true
     property int lockedRules: 0
     readonly property bool focusMode: { revision; return draft !== null && draft.mode === "focus" }
+    readonly property bool permanent: { revision; return draft !== null && draft.permanent === true && !focusMode }
 
     signal saved(string id)
     signal deleted()
@@ -260,10 +261,25 @@ Item {
             // ---------------------------------------------- when
             Heading {
                 text: qsTr("When")
-                hint: qsTr("Rules add up; the block is on whenever any of them is. Leave this empty for a block you only start by hand, or for a limit that applies all day.")
+                hint: root.permanent ? qsTr("On all the time, from saving until you set it to Disabled. Rules, days off, triggers, conditions, and the time limit are kept but do not apply; breaks and passes still do.")
+                                     : qsTr("Rules add up; the block is on whenever any of them is. Leave this empty for a block you only start by hand, or for a limit that applies all day.")
+            }
+            RowLayout {
+                visible: !root.focusMode
+                spacing: 4
+                Repeater {
+                    model: [[false, qsTr("On a schedule")], [true, qsTr("Permanent")]]
+                    Chip {
+                        text: modelData[1]
+                        // A lock can make a block permanent but never undo it.
+                        locked: root.locked && root.permanent
+                        checked: root.permanent === modelData[0]
+                        onToggled: { root.draft.permanent = modelData[0]; root.rebuild() }
+                    }
+                }
             }
             Repeater {
-                model: { root.structure; return root.draft ? root.draft.rules.length : 0 }
+                model: { root.structure; return root.draft && !root.permanent ? root.draft.rules.length : 0 }
                 RuleEditor {
                     Layout.fillWidth: true
                     rule: root.draft.rules[index]
@@ -273,6 +289,7 @@ Item {
                 }
             }
             Flow {
+                visible: !root.permanent
                 Layout.fillWidth: true
                 spacing: 6
                 Repeater {
@@ -288,7 +305,7 @@ Item {
             WeekPreview {
                 Layout.fillWidth: true
                 Layout.topMargin: 8
-                visible: root.draft && root.draft.rules.length > 0
+                visible: root.draft && root.draft.rules.length > 0 && !root.permanent
                 block: root.draft
                 revision: root.revision
                 days: 14
