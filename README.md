@@ -11,6 +11,14 @@ block.
 ## Install
 
 ```sh
+omarchy pkg aur add vow            # from the AUR
+sudo systemctl enable --now vow     # starts the enforcing service
+vow setup                           # Chromium extension + bar widget, as yourself
+```
+
+Or build from this repo:
+
+```sh
 bin/install                         # builds and installs the package
 sudo systemctl enable --now vow     # starts the enforcing service
 vow setup                           # Chromium extension + bar widget, as yourself
